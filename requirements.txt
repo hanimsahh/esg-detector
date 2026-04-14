@@ -1,1 +1,8 @@
-
+openai
+anthropic
+pdfplumber
+newsapi-python
+praw
+yfinance
+pandas
+requests
