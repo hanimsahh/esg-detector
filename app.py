@@ -1,4 +1,9 @@
+from datetime import datetime
 import streamlit as st
+
+# Import custom functions for financial data, news scraping and chatbot (if implemented)
+from functions.fin_api import get_esg_company_financials
+from functions.news_scraper import display_articles
 
 st.set_page_config(layout="wide", page_title="ESG Dashboard", page_icon="🌱")
 
@@ -46,34 +51,114 @@ with tab_chat:
             st.write(response)
 
 # ---------------------------------------------------------------------------
-# Tab 3 — ESG News (stub)
+# Tab 3 — ESG News
 # ---------------------------------------------------------------------------
 with tab_news:
-    st.subheader("Recent ESG News")
-    st.info("Hook up a news API here — e.g. NewsAPI, GNews, or an RSS feed filtered by ESG keywords.")
+    st.subheader("Company relevant ESG News")
+    st.info("News articles are sourced from the ESG News website (https://esgnews.com/).")
 
-    # TODO: fetch and display real articles
-    placeholder_articles = [
-        {"title": "EU tightens CSRD reporting rules", "source": "Reuters", "url": "#"},
-        {"title": "Apple hits 100% renewable energy target", "source": "FT", "url": "#"},
-        {"title": "SEC climate disclosure rules update", "source": "Bloomberg", "url": "#"},
-    ]
-    for article in placeholder_articles:
-        st.markdown(f"**[{article['title']}]({article['url']})** — {article['source']}")
-        st.divider()
+    company_map = {
+        "Nike": "nike",
+        "Adidas": "adidas",
+        "Puma": "puma",
+    }
+
+    selected_company = st.selectbox(
+        "Select a company for news",
+        list(company_map.keys()),
+        key="news_company_select",
+    )
+
+    @st.cache_data(show_spinner=False)
+    def load_company_news(company_tag: str):
+        return display_articles(company_tag)
+
+    with st.spinner("Loading ESG-related articles..."):
+        articles = load_company_news(company_map[selected_company])
+
+    if not articles:
+        st.warning("No relevant ESG articles found.")
+    else:
+        for article in articles:
+            title = article.get("title") or article["url"]
+
+            st.markdown(f"### [{title}]({article['url']})")
+            st.markdown(
+                f"**Pillar:** {article['main_pillar']}  \n"
+                f"**Relevance:** {article['strength'].capitalize()}"
+            )
+            st.markdown(article["message"])
+
+            if article.get("matched_keywords"):
+                st.caption("Matched keywords: " + ", ".join(article["matched_keywords"]))
+
+            st.divider()
 
 # ---------------------------------------------------------------------------
-# Tab 4 — Financials (stub)
+# Tab 4 — Financials
 # ---------------------------------------------------------------------------
+
+
+# cache the financial data to avoid hitting API limits during development
+@st.cache_data
+def load_financial_data():
+    return get_esg_company_financials()
+
+
+# create tab for displaying financial metrics for the companies
 with tab_financials:
     st.subheader("Basic Financial Data")
-    st.info("Hook up a financial data source here — e.g. yfinance, Alpha Vantage, or your own data.")
 
-    ticker = st.text_input("Enter a ticker symbol", value="AAPL")
+    if "financial_data" not in st.session_state:
+        st.session_state.financial_data = load_financial_data()
+        st.session_state.financial_timestamp = datetime.now()
 
-    if ticker:
-        # TODO: replace with real data fetch
-        st.write(f"Showing placeholder data for **{ticker.upper()}**")
-        st.metric("Market Cap", "$2.8T", delta="+1.2%")
-        st.metric("P/E Ratio", "28.4")
-        st.metric("Revenue (TTM)", "$385B", delta="+5.3%")
+    financial_data = st.session_state.financial_data
+
+    company_options = list(financial_data.keys())
+    selected_company = st.selectbox("Select a company", company_options)
+
+    company_data = financial_data[selected_company]
+
+    if "error" in company_data:
+        st.error(f"Could not load data for {selected_company}: {company_data['error']}")
+    else:
+        st.write(
+            f"Showing financial data for **{company_data['company_name']}** "
+            f"({company_data['ticker']})"
+        )
+
+        col1, col2 = st.columns(2)
+        col3, col4 = st.columns(2)
+        col5, _ = st.columns(2)
+
+        col1.metric(
+            "Market Cap",
+            f"${company_data['market_cap']:.2f}M" if company_data["market_cap"] is not None else "N/A"
+        )
+        col2.metric(
+            "P/E Ratio",
+            f"{company_data['pe_ratio']:.2f}" if company_data["pe_ratio"] is not None else "N/A"
+        )
+        col3.metric(
+            "Revenue Growth (TTM YoY)",
+            f"{company_data['revenue_growth']:.2f}%" if company_data["revenue_growth"] is not None else "N/A"
+        )
+        col4.metric(
+            "Net Margin (TTM)",
+            f"{company_data['net_margin']:.2f}%" if company_data["net_margin"] is not None else "N/A"
+        )
+        col5.metric(
+            "Debt-to-Equity",
+            f"{company_data['debt_to_equity']:.2f}" if company_data["debt_to_equity"] is not None else "N/A"
+        )
+
+    st.caption(
+        "Numbers obtained at "
+        + st.session_state.financial_timestamp.strftime("%d-%m-%Y %H:%M:%S")
+    )
+
+    if st.button("Refresh financial data"):
+        st.session_state.financial_data = load_financial_data()
+        st.session_state.financial_timestamp = datetime.now()
+        st.rerun()

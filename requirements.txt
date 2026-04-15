@@ -6,3 +6,6 @@ praw
 yfinance
 pandas
 requests
+
+dotenv
+bs4
