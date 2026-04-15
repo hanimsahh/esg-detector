@@ -6,3 +6,5 @@ praw
 yfinance
 pandas
 requests
+
+dotenv
