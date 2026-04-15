@@ -29,6 +29,15 @@ class FinnhubClient:
 
 # helper function to extract relevant financial metrics from the API response
 def extract_financial_summary(company_name: str, symbol: str, basic: dict) -> dict:
+    """Extracts key financial metrics from the API response for a given company.
+    Inputs:
+        company_name: The name of the company (e.g. "Nike")
+        symbol: The stock symbol of the company (e.g. "NKE")
+        basic: The API response containing basic financial metrics
+    Outputs:        
+        A dictionary with the company name, ticker, and selected financial metrics
+    """
+
     metrics = basic.get("metric", {})
     return {
         "company_name": company_name,
@@ -43,6 +52,11 @@ def extract_financial_summary(company_name: str, symbol: str, basic: dict) -> di
 
 # main function to get financial summaries for a predefined list of companies
 def get_esg_company_financials() -> dict:
+    """Fetches financial summaries for a predefined list of companies using the Finnhub API.
+    Outputs:
+        A dictionary where each key is a company name and the value is another dictionary containing financial metrics or error information.
+    """
+    
     if not FINNHUB_API_KEY:
         raise ValueError("FINNHUB_API_KEY not found in environment variables.")
 
