@@ -13,39 +13,15 @@ collection = chroma_client.get_or_create_collection(name="esg")
 
 st.set_page_config(layout="wide", page_title="ESG Dashboard", page_icon="🌱")
 
-col_logo, col_title, col_chat = st.columns([3, 4, 1])
-with col_logo:
-    st.image("logo.webp", use_container_width=True)
-with col_title:
-    st.title("🌱 ESG Dashboard")
-    
-with col_chat:
-    st.write("")
-    st.write("")
-    with st.popover("Chat", use_container_width=True):
-        st.subheader("ESG Chatbot")
-
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
-
-        chat_window = st.container(height=350)
-        with chat_window:
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-        if prompt := st.chat_input("How can I help?"):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            recent_history = st.session_state.messages[-6:]
-            with st.spinner("Analyzing..."):
-                response = get_chat_response_hist(prompt, collection, recent_history)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.rerun()
-
+st.title("🌱 ESG Dashboard")
+st.caption("Powered by WikiRate & Looker Studio")
 st.divider()
 
-tab_dashboard, tab_news, tab_financials = st.tabs([
+
+
+tab_dashboard, tab_chat, tab_news, tab_financials = st.tabs([
     "📊 Dashboard",
+    "🤖 Chatbot",
     "📰 ESG News",
     "💹 Financials",
 ])
@@ -54,12 +30,48 @@ tab_dashboard, tab_news, tab_financials = st.tabs([
 # Tab 1 — Looker Studio embed
 # ---------------------------------------------------------------------------
 with tab_dashboard:
-    st.caption("Powered by Looker Studio")
     LOOKER_URL = "https://datastudio.google.com/embed/reporting/b295d785-ed80-45b4-8261-24c14c6e357e/page/p_j76if3pr2d"
     st.components.v1.iframe(LOOKER_URL, height=850, scrolling=True)
 
 # ---------------------------------------------------------------------------
-# Tab 2 — ESG News
+# Tab 2 — Chatbot (stub)
+# ---------------------------------------------------------------------------
+
+        
+with tab_chat:
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    user_input = st.chat_input("How can I help?")
+
+    if user_input:
+        # show user message immediately
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
+        # store user message
+        st.session_state.messages.append({"role": "user", "content": user_input})
+
+        recent_history = st.session_state.messages[-6:]
+
+        # show assistant placeholder immediately
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing..."):
+                response = get_chat_response_hist(user_input, collection, recent_history)
+            st.markdown(response)
+
+        # store assistant response
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+        # rerun so the whole chat is rebuilt cleanly from session_state
+        st.rerun()
+
+# ---------------------------------------------------------------------------
+# Tab 3 — ESG News
 # ---------------------------------------------------------------------------
 with tab_news:
     st.subheader("Company relevant ESG News")
@@ -103,7 +115,7 @@ with tab_news:
             st.divider()
 
 # ---------------------------------------------------------------------------
-# Tab 3 — Financials
+# Tab 4 — Financials
 # ---------------------------------------------------------------------------
 
 
