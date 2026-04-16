@@ -1,15 +1,23 @@
 from datetime import datetime
 import streamlit as st
+import chromadb
 
 # Import custom functions for financial data, news scraping and chatbot (if implemented)
 from functions.fin_api import get_esg_company_financials
 from functions.news_scraper import display_articles
+
+from functions.chatbot import get_chat_response_hist
+
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+collection = chroma_client.get_or_create_collection(name="esg")
 
 st.set_page_config(layout="wide", page_title="ESG Dashboard", page_icon="🌱")
 
 st.title("🌱 ESG Dashboard")
 st.caption("Powered by WikiRate & Looker Studio")
 st.divider()
+
+
 
 tab_dashboard, tab_chat, tab_news, tab_financials = st.tabs([
     "📊 Dashboard",
@@ -28,27 +36,39 @@ with tab_dashboard:
 # ---------------------------------------------------------------------------
 # Tab 2 — Chatbot (stub)
 # ---------------------------------------------------------------------------
-with tab_chat:
-    st.subheader("ESG Document Chatbot")
-    st.info("Connect your document store here — e.g. LangChain + your ESG files.")
 
+        
+with tab_chat:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
-            st.write(msg["content"])
+            st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Ask a question about your ESG documents..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    user_input = st.chat_input("How can I help?")
+
+    if user_input:
+        # show user message immediately
         with st.chat_message("user"):
-            st.write(prompt)
+            st.markdown(user_input)
 
-        # TODO: replace this with your actual LLM/RAG call
-        response = f"(stub) You asked: {prompt}"
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        # store user message
+        st.session_state.messages.append({"role": "user", "content": user_input})
+
+        recent_history = st.session_state.messages[-6:]
+
+        # show assistant placeholder immediately
         with st.chat_message("assistant"):
-            st.write(response)
+            with st.spinner("Analyzing..."):
+                response = get_chat_response_hist(user_input, collection, recent_history)
+            st.markdown(response)
+
+        # store assistant response
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+        # rerun so the whole chat is rebuilt cleanly from session_state
+        st.rerun()
 
 # ---------------------------------------------------------------------------
 # Tab 3 — ESG News
